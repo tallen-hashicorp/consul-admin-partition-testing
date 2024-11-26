@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: consul-acl-bootstrap-sa
+  namespace: consul-dc2
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-writer-role
+  namespace: consul-dc2
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: consul-acl-bootstrap-rolebinding
+  namespace: consul-dc2
+subjects:
+- kind: ServiceAccount
+  name: consul-acl-bootstrap-sa
+  namespace: consul-dc2
+roleRef:
+  kind: Role
+  name: secret-writer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: consul-acl-bootstrap
+  namespace: consul-dc2
+spec:
+  template:
+    spec:
+      serviceAccountName: consul-acl-bootstrap-sa
+      restartPolicy: Never
+      containers:
+      - name: consul-acl-bootstrap
+        image: hashicorp/consul:1.20
+        command: ["sh", "-c"]
+        args:
+        - |
+          echo "waiting 20 seconds for consul to be ready"
+          sleep 20
+
+          consul acl bootstrap -format=json > output.json
+
+          echo "consul is bootstrapped"
+
+          cat output.json
+          
+          export ACCESSOR_ID=$(cat output.json | jq -r '.AccessorID'| base64)
+          export SECRET_ID=$(cat output.json | jq -r '.SecretID' | base64)
+
+          export TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          export SECRET_NAME="consul-bootstrap-init-secret"
+          export NAMESPACE="consul-dc2"
+
+          cat <<EOF > secret.json
+          {
+            "apiVersion": "v1",
+            "kind": "Secret",
+            "metadata": {
+              "name": "$SECRET_NAME"
+            },
+            "data": {
+              "AccessorID": "$ACCESSOR_ID",
+              "SecretID": "$SECRET_ID"
+            }
+          }
+          EOF
+
+          curl -k -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data @secret.json https://kubernetes.default.svc/api/v1/namespaces/$NAMESPACE/secrets
+
+          echo "bootstrap secrets written to k8s"
+
+          echo "waiting 20 seconds for consul elect a leader"
+          sleep 20
+
+          echo "generate consul global-management token"
+
+          CONSUL_HTTP_TOKEN=$(cat output.json | jq -r '.SecretID') consul acl token create -policy-name=global-management -format=json > output-global.json
+          export GLOBAL_ACCESSOR_ID=$(cat output-global.json | jq -r '.AccessorID'| base64)
+          export GLOBAL_SECRET_ID=$(cat output-global.json | jq -r '.SecretID' | base64)
+          export GLOBAL_SECRET_NAME="consul-global-token-secret"
+
+          cat <<EOF > secret.json
+          {
+            "apiVersion": "v1",
+            "kind": "Secret",
+            "metadata": {
+              "name": "$GLOBAL_SECRET_NAME"
+            },
+            "data": {
+              "AccessorID": "$ACCESSOR_ID",
+              "SecretID": "$SECRET_ID"
+            }
+          }
+          EOF
+
+          curl -k -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data @secret.json https://kubernetes.default.svc/api/v1/namespaces/$NAMESPACE/secrets
+
+          echo "global secrets written to k8s"
+
+        env:
+        - name: CONSUL_HTTP_ADDR
+          value: 'http://consul:8500'
+        volumeMounts:
+        - name: kube-api-access
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+      volumes:
+      - name: kube-api-access
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 3600
