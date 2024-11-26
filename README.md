@@ -1,6 +1,14 @@
 # consul-admin-partition-testing
 Simple Admin Partition example
 
+### Enterprise License Key
+
+```bash
+kubectl apply -f 1-Standard/1-Namespace.yaml
+kubectl -n consul-dc1 create secret generic consul-licence --from-file=consul.hclic
+```
+
+
 ## To run
 ```bash
 kubectl apply -f 0-Monitoring

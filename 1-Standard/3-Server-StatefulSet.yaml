@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: consul
-        image: hashicorp/consul:1.19.1
+        image: hashicorp/consul-enterprise:1.20-ent
         command: ["consul", "agent", "-config-file=/consul/config/consul.hcl"]
         ports:
         - containerPort: 8500
@@ -39,6 +39,12 @@ spec:
           mountPath: /var/log
         - name: consul-config
           mountPath: /consul/config
+        env:
+        - name: CONSUL_LICENSE
+          valueFrom:
+            secretKeyRef:
+              name: consul-licence
+              key: consul.hclic
       - name: promtail
         image: grafana/promtail
         args:
