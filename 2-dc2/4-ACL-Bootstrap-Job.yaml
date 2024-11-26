@@ -44,8 +44,8 @@ spec:
         command: ["sh", "-c"]
         args:
         - |
-          echo "waiting 20 seconds for consul to be ready"
-          sleep 20
+          echo "waiting 60 seconds for consul to be ready"
+          sleep 60
 
           consul acl bootstrap -format=json > output.json
 
@@ -77,9 +77,6 @@ spec:
           curl -k -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data @secret.json https://kubernetes.default.svc/api/v1/namespaces/$NAMESPACE/secrets
 
           echo "bootstrap secrets written to k8s"
-
-          echo "waiting 20 seconds for consul elect a leader"
-          sleep 20
 
           echo "generate consul global-management token"
 

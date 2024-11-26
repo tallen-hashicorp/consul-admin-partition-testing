@@ -54,6 +54,7 @@ data:
               job: consul
               __path__: /var/log/consul.log
               hostname: ${HOSTNAME}
+              dc: dc1
         pipeline_stages:
           - regex:                 # For regex-based parsing
               expression: '^(?P<timestamp>[^\s]+)\s\[(?P<level>[^\]]+)\]\s(?P<component>[^:]+):\s(?P<message>.+)$'

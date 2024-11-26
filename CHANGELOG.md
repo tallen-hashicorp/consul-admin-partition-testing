@@ -10,11 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `consul-bootstrap-init-secret` & `consul-global-token-secret` with consul acl tokens
+- DC2 under 2-dc2
+- DC into loki labels
 
 ### Changed
 
 - Changing to Consul Ent
 - Changing to 1.20-ent from 1.19
+- Moved 1-Standard to 1-dc1
 
 ### Removed
 

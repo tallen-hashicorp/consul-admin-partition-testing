@@ -12,6 +12,7 @@ data:
     log_level = "INFO"
     log_file = "/var/log/"
     retry_join = ["consul-0.consul", "consul-1.consul", "consul-2.consul", "consul-3.consul", "consul-4.consul"]
+    datacenter = "dc1"
 
     service {
       name = "counting-service"
@@ -57,3 +58,4 @@ data:
               job: consul-client
               __path__: /var/log/consul.log
               hostname: ${HOSTNAME}
+              dc: dc1
