@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ServiceAccount and Role for creating k8s secrets
+- `consul-acl-bootstrap` job to bootstrap console
+
 ### Changed
 
-
-### Removed
+- Enabling ACL
+- `consul-client` deployment now uses console root token
 
 
 ## [0.0.0] - 2024-11-26

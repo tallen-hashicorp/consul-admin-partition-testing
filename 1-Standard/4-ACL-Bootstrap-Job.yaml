@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: consul-acl-bootstrap-sa
+  namespace: consul-dc1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-writer-role
+  namespace: consul-dc1
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: consul-acl-bootstrap-rolebinding
+  namespace: consul-dc1
+subjects:
+- kind: ServiceAccount
+  name: consul-acl-bootstrap-sa
+  namespace: consul-dc1
+roleRef:
+  kind: Role
+  name: secret-writer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: consul-acl-bootstrap
+  namespace: consul-dc1
+spec:
+  template:
+    spec:
+      serviceAccountName: consul-acl-bootstrap-sa
+      restartPolicy: Never
+      containers:
+      - name: consul-acl-bootstrap
+        image: hashicorp/consul:1.19.1
+        command: ["sh", "-c"]
+        args:
+        - |
+          sleep 1m
+
+          consul acl bootstrap -format=json > output.json
+
+          echo "consul is bootstrapped"
+          
+          export ACCESSOR_ID=$(cat output.json | jq -r '.AccessorID'| base64)
+          export SECRET_ID=$(cat output.json | jq -r '.SecretID' | base64)
+
+          export TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          export SECRET_NAME="consul-bootstrap-init-secret"
+          export NAMESPACE="consul-dc1"
+
+          cat <<EOF > secret.json
+          {
+            "apiVersion": "v1",
+            "kind": "Secret",
+            "metadata": {
+              "name": "$SECRET_NAME"
+            },
+            "data": {
+              "AccessorID": "$ACCESSOR_ID",
+              "SecretID": "$SECRET_ID"
+            }
+          }
+          EOF
+
+          curl -k -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data @secret.json https://kubernetes.default.svc/api/v1/namespaces/$NAMESPACE/secrets
+
+          echo "bootstrap secrets written to k8s"
+        env:
+        - name: CONSUL_HTTP_ADDR
+          value: 'http://consul:8500'
+        volumeMounts:
+        - name: kube-api-access
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+      volumes:
+      - name: kube-api-access
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 3600
