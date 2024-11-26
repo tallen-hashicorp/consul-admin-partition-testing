@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: consul
-        image: hashicorp/consul:1.19.1
+        image: hashicorp/consul-enterprise:1.20-ent
         command: ["consul", "agent", "-config-file=/consul/config/consul.hcl"]
         ports:
         - containerPort: 8500
@@ -42,8 +42,13 @@ spec:
         - name: CONSUL_HTTP_TOKEN 
           valueFrom:
             secretKeyRef:
-              name: consul-bootstrap-init-secret
+              name: consul-global-token-secret
               key: SecretID
+        - name: CONSUL_LICENSE
+          valueFrom:
+            secretKeyRef:
+              name: consul-licence
+              key: consul.hclic
       - name: counting-service
         image: hashicorp/counting-service:0.0.2
         ports:
