@@ -12,6 +12,11 @@ kubectl apply -f 1-Standard
 kubectl -n consul-monitoring port-forward services/grafana-service 3000:80
 ```
 
+## Get Root Token
+```bash
+kubectl -n consul-dc1 get secrets consul-bootstrap-init-secret --template={{.data.SecretID}} | base64 -d
+```
+
 
 ## To Access Consul
 ```bash
@@ -20,13 +25,19 @@ kubectl -n consul-dc1 port-forward services/consul 8500:8500
 
 [http://127.0.0.1:8500](http://127.0.0.1:8500)
 
-## To Enable ACL
-```bash
-consul acl bootstrap
-```
 
 ## To TearDown
 ```bash
 kubectl delete -f 1-Standard
 kubectl delete -f 0-Monitoring
+```
+
+---
+
+## ACL Bootstrap Process
+This is for reference, this should be performed automatic so is not required to run by hand. 
+
+```bash
+consul acl bootstrap
+consul acl bootstrap -format=json
 ```

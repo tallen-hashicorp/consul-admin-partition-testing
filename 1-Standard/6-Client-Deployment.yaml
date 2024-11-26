@@ -38,6 +38,12 @@ spec:
           mountPath: /var/log
         - name: consul-config
           mountPath: /consul/config
+        env:
+        - name: CONSUL_HTTP_TOKEN 
+          valueFrom:
+            secretKeyRef:
+              name: consul-bootstrap-init-secret
+              key: SecretID
       - name: counting-service
         image: hashicorp/counting-service:0.0.2
         ports:
