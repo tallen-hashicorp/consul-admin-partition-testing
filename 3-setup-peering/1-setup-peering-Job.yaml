@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: consul-setup-peer
+  namespace: consul-dc1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: consul-dc1
+  name: consul-secret-reader
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["consul-global-token-secret"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: consul-secret-reader
+  namespace: consul-dc2
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["consul-global-token-secret"] 
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: consul-secret-reader-binding
+  namespace: consul-dc1
+subjects:
+  - kind: ServiceAccount
+    name: consul-setup-peer
+    namespace: consul-dc1
+roleRef:
+  kind: Role
+  name: consul-secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: consul-peering-setup
+  namespace: consul-dc1
+spec:
+  template:
+    spec:
+      serviceAccountName: consul-setup-peer
+      restartPolicy: Never
+      containers:
+      - name: consul-peering-setup
+        image: hashicorp/consul:1.20
+        command: ["sh", "-c"]
+        args:
+        - |
+          sleep 5m
+          echo "Setup cluster peering for DC1 and DC2"
+          apk add kubectl
+          #http://loki-service.consul-monitoring.svc.cluster.local:80/loki/api/v1/push
+          DC1_TOKEN=$(kubectl get secret consul-global-token-secret -n consul-dc1 -o=jsonpath='{.data.SecretID}' | base64 -d)
+          DC2_TOKEN=$(kubectl get secret consul-global-token-secret -n consul-dc2 -o=jsonpath='{.data.SecretID}' | base64 -d)
+          echo "DC1_TOKEN: $DC1_TOKEN"
+          echo "DC2_TOKEN: $DC2_TOKEN"
+        env:
+        - name: CONSUL_HTTP_TOKEN 
+          valueFrom:
+            secretKeyRef:
+              name: consul-global-token-secret
+              key: SecretID

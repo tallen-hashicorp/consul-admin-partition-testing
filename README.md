@@ -18,6 +18,11 @@ kubectl apply -f 1-dc1
 kubectl apply -f 2-dc2
 ```
 
+## To Setup peering
+```bash
+kubectl apply -f 3-setup-peering
+```
+
 ## To Access Monitoring
 ```bash
 kubectl -n consul-monitoring port-forward services/grafana-service 3000:80
@@ -43,6 +48,7 @@ kubectl -n consul-dc2 port-forward services/consul 8500:8500
 ```bash
 kubectl delete -f 1-dc1
 kubectl delete -f 2-dc2
+kubectl delete -f 3-setup-peering
 kubectl delete -f 0-Monitoring
 ```
 
