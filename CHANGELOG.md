@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DC2 under 2-dc2
 - DC into loki labels
 - ACL Bootstrap jobs now wait until consul leaser is elected rather then always 60
+- Cluster peering script to automatically peer the two DC's
 
 ### Changed
 

@@ -5,9 +5,8 @@ metadata:
   namespace: consul-dc1
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  namespace: consul-dc1
   name: consul-secret-reader
 rules:
   - apiGroups: [""]
@@ -16,27 +15,15 @@ rules:
     resourceNames: ["consul-global-token-secret"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: consul-secret-reader
-  namespace: consul-dc2
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get"]
-    resourceNames: ["consul-global-token-secret"] 
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: consul-secret-reader-binding
-  namespace: consul-dc1
 subjects:
   - kind: ServiceAccount
     name: consul-setup-peer
     namespace: consul-dc1
 roleRef:
-  kind: Role
+  kind: ClusterRole
   name: consul-secret-reader
   apiGroup: rbac.authorization.k8s.io
 ---
@@ -56,14 +43,35 @@ spec:
         command: ["sh", "-c"]
         args:
         - |
-          sleep 5m
           echo "Setup cluster peering for DC1 and DC2"
-          apk add kubectl
-          #http://loki-service.consul-monitoring.svc.cluster.local:80/loki/api/v1/push
+          
+          echo "wait a few seconds to ensure dc2 is up"
+          sleep 5s
+          
+          apk add --no-cache kubectl
+          
           DC1_TOKEN=$(kubectl get secret consul-global-token-secret -n consul-dc1 -o=jsonpath='{.data.SecretID}' | base64 -d)
           DC2_TOKEN=$(kubectl get secret consul-global-token-secret -n consul-dc2 -o=jsonpath='{.data.SecretID}' | base64 -d)
+          
           echo "DC1_TOKEN: $DC1_TOKEN"
           echo "DC2_TOKEN: $DC2_TOKEN"
+
+          export CONSUL_HTTP_ADDR='http://consul.consul-dc1.svc.cluster.local:8500'
+          export CONSUL_HTTP_TOKEN=$DC1_TOKEN
+          echo "Generating Token on DC1"
+          PEER_TOKEN=$(consul peering generate-token -name cluster-02)
+          echo "PEER_TOKEN: $PEER_TOKEN"
+
+          export CONSUL_HTTP_ADDR='http://consul.consul-dc2.svc.cluster.local:8500'
+          export CONSUL_HTTP_TOKEN=$DC2_TOKEN
+          echo "Establish a connection between clusters on DC2"
+          consul peering establish -name cluster-01 -peering-token $PEER_TOKEN
+          
+          echo "wait a few seconds let peering setup"
+          sleep 5
+          consul peering list
+          consul peering read -name cluster-01
+
         env:
         - name: CONSUL_HTTP_TOKEN 
           valueFrom:
