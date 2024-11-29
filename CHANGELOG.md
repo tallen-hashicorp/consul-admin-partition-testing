@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `consul-bootstrap-init-secret` & `consul-global-token-secret` with consul acl tokens
 - DC2 under 2-dc2
 - DC into loki labels
+- ACL Bootstrap jobs now wait until consul leaser is elected rather then always 60
 
 ### Changed
 
