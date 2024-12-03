@@ -13,4 +13,4 @@ kubectl apply -f 3-setup-peering
 echo "Cluster building, waiting 2 minutes to get tokens"
 
 echo "dc1: $(kubectl -n consul-dc1 get secrets consul-bootstrap-init-secret --template={{.data.SecretID}} | base64 -d)"
-echo "dc2: $(kubectl -n consul-dc2 get secrets consul-bootstrap-init-secret --template={{.data.SecretID}} | base64 -d):
+echo "dc2: $(kubectl -n consul-dc2 get secrets consul-bootstrap-init-secret --template={{.data.SecretID}} | base64 -d)"
